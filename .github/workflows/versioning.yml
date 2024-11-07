@@ -1,0 +1,55 @@
+name: Versioning and Changelog Update
+
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [closed]
+
+jobs:
+  bump-version-and-update-changelog:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install conventional-changelog-cli
+        run: npm install -g conventional-changelog-cli
+
+      - name: Determine Version Bump
+        id: version
+        run: |
+          PR_LABELS=$(echo "${{ github.event.pull_request.labels[*] }}" | tr -d '\n')
+          if [[ "$PR_LABELS" == *"major"* ]]; then
+            echo "::set-output name=version::major"
+          elif [[ "$PR_LABELS" == *"minor"* ]]; then
+            echo "::set-output name=version::minor"
+          else
+            echo "::set-output name=version::patch"
+          fi
+
+      - name: Bump Version
+        run: |
+          npm version ${{ steps.version.outputs.version }} -m "chore(release): Bump version to %s"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate Changelog
+        run: |
+          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+
+      - name: Commit and Push Changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md package.json package-lock.json
+          git commit -m "chore: update changelog and version"
+          git push origin develop
