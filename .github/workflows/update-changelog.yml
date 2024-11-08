@@ -1,0 +1,43 @@
+name: Update Changelog
+
+on:
+  # Allows manual runs
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type YES to confirm the changelog update"
+        required: true
+        default: "NO"
+        type: string
+  # Trigger on pull request closed (merged) into develop
+  pull_request:
+    types: [closed]
+    branches:
+      - develop
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: npm install -g conventional-changelog-cli
+
+      - name: Generate Changelog
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            touch CHANGELOG.md
+          fi
+          conventional-changelog -p angular -i CHANGELOG.md -s -r 0
+
+      - name: Commit and Push Changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore: update changelog"
+          git push origin develop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
