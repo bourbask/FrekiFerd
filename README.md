@@ -1,6 +1,6 @@
 # 🐺 FrekiFerð
 
-*FrekiFerð* is your lightweight companion for transferring your unique Manjaro configurations and installed packages between systems. Inspired by Odin's loyal wolf, Freki, who fearlessly journeys from place to place, *FrekiFerð* helps you seamlessly carry your personal setup from one machine to another – fast, free, and easy! 🌠
+*FrekiFerð* ([/ˈfreːki ˈfɛrθ/](https://www.ipachart.com/)) is your go-to solution for quickly transferring your custom Manjaro configurations and installed packages between systems. Lightweight and efficient, FrekiFerð makes it simple to keep your personalized setup consistent across devices. Enjoy a smooth setup experience that’s fast, reliable, and entirely free to use. 🌠
 
 ## ✨ Why FrekiFerð?
 
