@@ -1,0 +1,52 @@
+name: Release Delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_title:
+        description: "Title for the release"
+        required: false
+        type: string
+      release_notes:
+        description: "Notes for this release"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Merge develop into main
+        run: |
+          git fetch origin
+          git checkout develop
+          git pull origin develop
+          git checkout main
+          git merge develop
+          git push origin main
+
+      - name: Set default release title if not provided
+        id: set_release_title
+        run: |
+          if [ -z "${{ github.event.inputs.release_title }}" ]; then
+            echo "release_title=Release v${{ github.run_number }}" >> $GITHUB_ENV
+          else
+            echo "release_title=${{ github.event.inputs.release_title }}" >> $GITHUB_ENV
+          fi
+
+      - name: Create GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: "v${{ github.run_number }}"
+          release_name: ${{ env.release_title }}
+          body: ${{ github.event.inputs.release_notes }}
+          draft: false
+          prerelease: false

@@ -1,0 +1,96 @@
+name: Bump Version
+
+on:
+  # Manual trigger for version bumps
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "Version type to bump (major, minor, patch)"
+        required: true
+        default: "patch"
+        type: string
+
+  # Trigger on pull request closed (merged) into develop
+  pull_request:
+    types: [closed]
+    branches:
+      - develop
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Fetch tags
+        run: git fetch --tags
+
+      - name: Determine version type
+        id: determine_version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            # Manual trigger - Use input version type
+            echo "version_type=${{ github.event.inputs.version_type }}" >> $GITHUB_ENV
+          else
+            # Automatic trigger - Get the most important label from the PR
+            LABELS="${{ github.event.pull_request.labels[*] }}"
+            
+            # Default to 'patch' unless a more important label is found
+            if [[ "$LABELS" =~ "major" ]]; then
+              echo "version_type=major" >> $GITHUB_ENV
+            elif [[ "$LABELS" =~ "minor" ]]; then
+              echo "version_type=minor" >> $GITHUB_ENV
+            else
+              echo "version_type=patch" >> $GITHUB_ENV
+            fi
+          fi
+          echo "Selected version type: ${{ env.version_type }}"
+
+      - name: Get current version tag
+        id: get_version
+        run: |
+          # Get the latest tag from Git, or default to 0.0.0 if none exists
+          TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "0.0.0")
+          echo "Current version is $TAG"
+          echo "tag=$TAG" >> $GITHUB_ENV
+
+      - name: Calculate next version
+        id: calc_version
+        run: |
+          # Extract major, minor, and patch numbers
+          IFS='.' read -r major minor patch <<< "${{ env.tag }}"
+
+          # Increment based on the determined version type
+          case "${{ env.version_type }}" in
+            major)
+              major=$((major + 1))
+              minor=0
+              patch=0
+              ;;
+            minor)
+              minor=$((minor + 1))
+              patch=0
+              ;;
+            patch)
+              patch=$((patch + 1))
+              ;;
+            *)
+              echo "Invalid version type provided."
+              exit 1
+              ;;
+          esac
+
+          # Set the new tag
+          NEW_TAG="$major.$minor.$patch"
+          echo "New version is $NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_ENV
+
+      - name: Create and push new tag
+        run: |
+          git tag ${{ env.new_tag }}
+          git push origin ${{ env.new_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
